@@ -11,8 +11,8 @@
 
 - **Last verified local milestone:** Docker Compose started FastAPI + PostgreSQL successfully on Windows / Docker Desktop WSL2; readiness returned HTTP 503 when PostgreSQL was stopped and recovered to HTTP 200. **Latest local B1 suite:** 2026-11-11, a disposable Python 3.12 container ran Ruff with `--ignore EXE002` and pytest: **19 passed, 1 skipped, 1 warning**, no failed tests.
 - **Last verified CI milestone:** GitHub Actions B1 branch workflow completed successfully: **20 pytest tests passed**, Ruff passed (https://github.com/mun068/DeceptShield/actions/runs/42994033570).
-- **Current work:** review candidate custom sensor event/HMAC contract, OpenCanary occurrence identity and acceptance criteria; gate G0/B1 **not approved yet**.
-- **Immediate next action:** peer-review PR #1 and PR #5, approve or revise event contract with team/supervisor, then implement transactional raw-event + processing-job persistence in a new reviewed PR. **Do not add live ingestion before approval.**
+- **Current work:** ADR-0002 records the adopted working engineering direction and **P0 flaws** in the existing B1 candidate (source-to-event authorization, decoy/asset target binding, HTTP metadata privacy, stale duplicate policy). The v1 wire contract and deployed ingress remain **unfrozen / unimplemented**.
+- **Immediate next action:** patch candidate contract and negative tests for ADR-0002 P0 defects; then add registered source/key/target schema and atomic raw+job persistence in a scoped PR. Wire live ingestion **only after** the versioned protocol and security cases pass, while keeping staged PR changes reviewable.
 - **Important local difference:** `compose.yaml` on user's Windows machine has an *uncommitted* port override `127.0.0.1:18000:8000`; this local modification is not yet in the GitHub branch.
 
 ## Current implementation and evidence
@@ -26,7 +26,7 @@
 | CI quality/testing | Implemented; CI and local tests verified | GitHub Actions: 20 passed and Ruff passed; Windows bind-mounted container: 19 passed, 1 skipped (DB test), Ruff passed with `EXE002` ignored |
 | Offline HMAC candidate verifier | Implemented **as experimental helper only** | Synthetic tests; not wired into FastAPI or production registry |
 | OpenCanary occurrence-key helper | Implemented **as experimental helper only** | Synthetic ordinal/reimport tests; no actual collector |
-| Approved B1 contracts | **Pending approval** | https://github.com/mun068/DeceptShield/issues/2 |
+| B1 engineering direction / frozen wire contract | **Working direction adopted; wire contract not frozen** | ADR-0002 lists P0 fixes and explicit next gate: https://github.com/mun068/DeceptShield/blob/feature/b1-event-contract-candidate/docs/decisions/ADR-0002-B1-working-engineering-baseline.md |
 | Event intake and database acceptance | Not implemented | No `POST /api/v1/sensor-events`; no durable raw+job transaction |
 | Real sensors: Canary File / HTTP Decoy / OpenCanary | Not implemented | R-01/R-02/R-03 remain design scope |
 | Detection engine / grouping / scoring | Not implemented | Concurrency safety and fixed 300-sec window not yet verified |
@@ -40,7 +40,7 @@
 | Stage | Deliverable / exit gate | Current state |
 | --- | --- | --- |
 | 0 — Foundation | Reproducible dev/CI stack, health failure/recovery checks, review and merge | **Technically validated; PR review/merge pending** |
-| 1A — B1 contract | Approved event shapes, authentication boundary, provenance, tests, changes | **CI and local offline candidate tests passed; sign-off pending** |
+| 1A — B1 contract | Final event shapes, authenticated source/target binding, privacy boundaries, tests and change record | **Working approach adopted; P0 candidate fixes and wire freeze pending** |
 | 1B — Durable ingestion | Registered sources, body MAC, raw+job atomic commit, idempotency, 503/rollback tests | Not started |
 | 2 — Sensors | Canary File Agent (modify/rename/delete), HTTP Decoy, pinned OpenCanary adapter | Not started |
 | 3 — Rules/incident engine | R-01/R-02/R-03, deterministic fixed window, first-insert concurrency proof, scoring | Not started |
@@ -49,6 +49,13 @@
 | 6 — Context/reporting | Context extensions, operational health, reporting and selected alerts | Planned; priority after Core |
 | 7 — Evaluation | Frozen 40 Core + separate 10 optional scenarios, security/load/recovery results | Not started |
 | 8 — Release/demo | Single-server lab deployment, hardening, documented scope/residual risk, handover | Not started |
+
+## B1 engineering decision — 2026-11-11
+
+- Internal working baseline recorded in [ADR-0002](docs/decisions/ADR-0002-B1-working-engineering-baseline.md): **single-server modular monolith, PostgreSQL-backed worker, R-02 first, no added Core scope**.
+- **P0 gaps confirmed from current offline helper:** no registered source-type-to-event-type mapping; no registered target decoy/asset validation; limited HTTP path privacy filtering and missing `host`; no explicit accepted-retransmit-after-300-seconds semantics.
+- The architecture direction is adopted for implementation planning, **not** an approved or implemented live wire/API contract; no code changes to production intake were made during this milestone.
+- Immediate next code milestone: update schemas and adversarial fixtures, then DB source/target registry and atomic raw+job commit, then controlled API endpoint.
 
 ## Local B1 verification — 2026-11-11
 
@@ -69,7 +76,7 @@
 
 ## Immediate next tasks (prioritized)
 
-1. **P0 — Review contracts:** validate B1 against GP1 and audit evidence; close ambiguous fields (registration/key custody, 8192-byte trial cap, event vocabulary, replay/freshness, malformed JSON behavior). Obtain explicit supervisor/team sign-off in issue #2.
+1. **P0 — Fix contract flaws (ADR-0002):** add source-event-type and configured-target authorization, safe host/path/route metadata with privacy tests, and stale duplicate versus genuinely late new event behavior. Keep unchanged GP1 claims and document any variance.
 2. **P0 — B1 test reproducibility:** Local synthetic tests have passed (19 passed, 1 DB integration skipped). Before release, rerun DB integration with a dedicated test database and resolve the Windows bind-mount `EXE002` lint portability discrepancy without suppressing unrelated rules.
 3. **P0 — PR review and hygiene:** second student review; merge PR #1 only after acceptance; retarget PR #5 when dependency merges; ensure local `compose.yaml` port override is preserved or explicitly documented.
 4. **P0 — Transactional event storage:** PostgreSQL migrations with one transaction for accepted source bytes, SHA-256 digest, unique occurrence, processing obligation; no response before commit.
