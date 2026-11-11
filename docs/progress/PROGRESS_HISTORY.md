@@ -46,3 +46,31 @@ This append-only log records *verified* milestones and remaining work at each ch
 ### Rule for the next entry
 
 After a real phase acceptance, append a new dated section with **(a)** last checkpoint, **(b)** done + evidence, **(c)** unfinished work, **(d)** blockers/risks, **(e)** the immediate next stage, **(f)** branch/PR/CI links. Update `PROJECT_STATUS.md` to match, but never erase earlier entries.
+
+---
+
+## 2026-11-11 — Checkpoint 1: Local B1 validation (test milestone, **not contract approval**)
+
+**Branch:** `feature/b1-event-contract-candidate`  
+**Environment:** Windows PowerShell + Docker Desktop/WSL2; temporary `python:3.12-slim` container with Windows-mounted backend folder.
+
+### Verified since Checkpoint 0
+
+- Installed backend and dev dependencies successfully inside the disposable container.
+- `ruff check --ignore EXE002 .` → **All checks passed**.
+- `pytest -q` → **19 passed, 1 skipped, 1 warning in 0.63s**.
+- The skipped test is the PostgreSQL integration test, disabled by default without a dedicated test DB connection; GitHub Actions B1 run https://github.com/mun068/DeceptShield/actions/runs/42994033570 previously ran the suite with its DB test: **20 passed**.
+- The earlier local Ruff run (without exception) reported eight `EXE002` warnings caused by Python files perceived as executable from the Windows bind mount. The accepted local run excluded **only** `EXE002`; GitHub CI lint passed without excluding it.
+- The one pytest warning concerns deprecation in the test-client dependency integration. No application/API runtime failure was shown by these tests.
+
+### Still unverified / pending
+
+- Contract sign-off from supervisor/team; PR #1 and PR #5 review and merge.
+- Production path: TLS/registry/authenticity, event ingestion endpoint, transactional raw+job persistence, deduplication and retry, worker crash safety, concurrent grouping, signed export verification, RBAC, real sensors and evaluation holdout.
+- Local PostgreSQL integration test under a dedicated DB, plus dependency pin/lock and cross-OS lint-parity review.
+
+### Immediate next action
+
+Review and approve the B1 wire contract and GP1 scope alignment in issue #2 before implementing durable ingestion. Coordinate the stacked draft pull requests (#1 then #5); keep the local port override uncommitted or explicitly reconcile it.
+
+**Evidence:** User-provided Windows console output dated 2026-11-11, plus [GitHub Actions B1 results](https://github.com/mun068/DeceptShield/actions/runs/42994033570). No claim of merged code or live ingestion.
