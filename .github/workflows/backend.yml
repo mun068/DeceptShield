@@ -1,0 +1,48 @@
+name: Backend checks
+
+on:
+  push:
+    branches: ["main", "feature/**"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: deceptshield
+          POSTGRES_PASSWORD: ci-only-test-password
+          POSTGRES_DB: deceptshield
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U deceptshield -d deceptshield"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 15
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: deceptshield
+      PGPASSWORD: ci-only-test-password
+      PGDATABASE: deceptshield
+      DECEPTSHIELD_TEST_DB: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: python -m pip install -e './backend[dev]'
+      - name: Lint backend
+        run: ruff check backend
+      - name: Unit and PostgreSQL integration tests
+        run: pytest -q backend/tests
