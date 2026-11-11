@@ -4,7 +4,7 @@ import hashlib
 import hmac
 import json
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -19,7 +19,7 @@ SENSOR_ID = "da3b1c17-1bbb-47d8-8754-b00f4800822d"
 DECOY_ID = "0e75d059-411a-4919-86fb-dfc5ac33dfe1"
 COLLECTOR_ID = "09700496-8543-43ce-9ca6-0c16a83af043"
 CAPTURE_ID = "9b95fdc6-1784-424f-a255-4ef36483126f"
-CLOCK = datetime(2026, 11, 11, 9, 0, tzinfo=timezone.utc)
+CLOCK = datetime(2026, 11, 11, 9, 0, tzinfo=UTC)
 REGISTRY = {(SENSOR_ID, "lab-v1"): KEY}
 
 
@@ -142,4 +142,11 @@ def test_boolean_http_status_is_not_accepted_as_integer():
     event = sample_event()
     event["payload"]["status_code"] = True
     with pytest.raises(ContractError, match="invalid_http_status"):
+        verify(encode(event))
+
+
+def test_http_source_ip_must_be_text_not_integer():
+    event = sample_event()
+    event["payload"]["source_ip"] = 12345
+    with pytest.raises(ContractError, match="invalid_source_ip"):
         verify(encode(event))

@@ -12,8 +12,9 @@ import ipaddress
 import json
 import re
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Mapping
+from collections.abc import Mapping
+from datetime import UTC, datetime
+from typing import Any
 
 MAX_BODY_BYTES = 8192  # B1 candidate only; not an approved GP1 requirement.
 MAX_CLOCK_SKEW_SECONDS = 300  # GP1 design value; final retry behavior needs approval.
@@ -113,6 +114,8 @@ def _validate_payload(event_type: str, payload: Any) -> None:
     if type(status) is not int or not 100 <= status <= 599:
         raise ContractError("invalid_http_status")
     if "source_ip" in payload:
+        if not isinstance(payload["source_ip"], str):
+            raise ContractError("invalid_source_ip")
         try:
             ipaddress.ip_address(payload["source_ip"])
         except (ValueError, TypeError) as exc:
@@ -168,13 +171,13 @@ def verify_candidate_event(
     if not isinstance(timestamp, str) or not _UTC_TIMESTAMP.fullmatch(timestamp):
         raise ContractError("invalid_observed_at")
     try:
-        observed = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+        observed = datetime.fromisoformat(timestamp)
     except ValueError as exc:
         raise ContractError("invalid_observed_at") from exc
-    check_time = now or datetime.now(timezone.utc)
+    check_time = now or datetime.now(UTC)
     if check_time.tzinfo is None or check_time.utcoffset() is None:
         raise ValueError("now must be timezone-aware")
-    skew = abs((observed - check_time.astimezone(timezone.utc)).total_seconds())
+    skew = abs((observed - check_time.astimezone(UTC)).total_seconds())
     if skew > MAX_CLOCK_SKEW_SECONDS:
         raise ContractError("outside_freshness_window")
     _validate_payload(event_type, message["payload"])
