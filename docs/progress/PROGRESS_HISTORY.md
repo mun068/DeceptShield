@@ -74,3 +74,39 @@ After a real phase acceptance, append a new dated section with **(a)** last chec
 Review and approve the B1 wire contract and GP1 scope alignment in issue #2 before implementing durable ingestion. Coordinate the stacked draft pull requests (#1 then #5); keep the local port override uncommitted or explicitly reconcile it.
 
 **Evidence:** User-provided Windows console output dated 2026-11-11, plus [GitHub Actions B1 results](https://github.com/mun068/DeceptShield/actions/runs/42994033570). No claim of merged code or live ingestion.
+
+---
+
+## 2026-11-11 — Checkpoint 2: Engineering direction and B1 security review (not a release)
+
+**Decision document:** [ADR-0002](../../docs/decisions/ADR-0002-B1-working-engineering-baseline.md)  
+**Branch:** `feature/b1-event-contract-candidate`
+
+### Decision reached
+
+- Retain the **single-server FastAPI + PostgreSQL modular monolith**, one DB-backed worker, no distributed queue/cluster/AI additions to Core.
+- Make **HTTP Decoy / R-02 the first end-to-end vertical slice**, then Canary File Agent R-01 and pinned OpenCanary adapter R-03.
+- Keep exact-byte HMAC-SHA256, per-source key, 8 KiB trial maximum, +/-300-second freshness for **new** events, and durable raw+job commit before receipt as the working approach. Handle already-accepted exact old retransmits without creating a new event; reject truly new stale events and record coverage limitations.
+- Keep OpenCanary acquisition identity separate from authenticated custom-sensor occurrence IDs.
+- No API ingestion is authorized as tested or production-ready by this document.
+
+### Technical issues identified in current offline verifier
+
+- **P0:** registered key alone cannot restrict source event family (`canary_file.*` vs `http_decoy.request`).
+- **P0:** well-formed but unregistered `decoy_id`/`asset_id` values are currently accepted by the pure helper.
+- **P0:** HTTP path check does not guarantee secret-free path segments or full control character filtering; candidate omits GP1 `host` field.
+- **P0:** stale-new-event and identical-retry-after-window policy needs explicit fixture and durable receipt mechanism.
+- **P1:** local Windows lint parity, skipped local PostgreSQL test, pinned dependency/image versions and test-client deprecation need follow-up.
+
+### What remains
+
+No source registry/target registry, live API endpoint, database acceptance migration, job worker, incident engine, key rotation, offline evidence verifier, API RBAC, integrated sensors, or scenario acceptance tests have been completed.
+
+### Next
+
+1. Update candidate contract fixture and add targeted failing/adversarial tests for the above P0 conditions.
+2. Implement migrations for enabled sensor/key/decoy registry, immutable accepted bytes + digest + pending processing job, and idempotent receipts.
+3. Only then implement and test first HTTP Decoy live ingestion in the isolated lab.
+4. Keep separate PR review and CI gates; no premature merges or proof claims.
+
+This is a **planning/design milestone**, not proof of newly implemented detection.
